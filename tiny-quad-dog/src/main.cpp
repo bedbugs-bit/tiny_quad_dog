@@ -1,18 +1,32 @@
 #include <Arduino.h>
+#include <Wire.h>
+#include "leg_kinematics.h"
+#include "servo_driver.h"
+#include "gait_engine.h"
+#include "robot_api.h"
+#include "llm_control.h"
 
-// put function declarations here:
-int myFunction(int, int);
+LegKinematics kinematics;
+ServoDriver servoDriver;
+GaitEngine gaitEngine;
+RobotApi robotApi;
+LlmControl llmControl;
 
 void setup() {
-  // put your setup code here, to run once:
-  int result = myFunction(2, 3);
+  Serial.begin(115200);
+  Wire.begin();
+
+  servoDriver.begin(0x40);
+  gaitEngine.begin(&kinematics, &servoDriver);
+  robotApi.begin(&gaitEngine);
+  llmControl.begin("YOUR_WIFI_SSID", "YOUR_WIFI_PASSWORD", &robotApi);
+
+  gaitEngine.standIdle();
+  Serial.println("Quadruped firmware initialized. Send a natural-language command or use Serial commands.");
 }
 
 void loop() {
-  // put your main code here, to run repeatedly:
-}
-
-// put function definitions here:
-int myFunction(int x, int y) {
-  return x + y;
+  servoDriver.update();
+  gaitEngine.update();
+  llmControl.update();
 }
