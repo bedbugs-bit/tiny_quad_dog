@@ -1,5 +1,7 @@
 #include "leg_kinematics.h"
 
+#include <cmath>
+
 namespace {
 constexpr float kPi = 3.14159265358979323846f;
 
@@ -41,8 +43,11 @@ bool LegKinematics::solveServosForFoot(float xMm, float yMm, float& theta1Deg, f
     return false;
   }
 
-  // Law of cosines for the second joint.
-  const float cosTheta2 = clampFloat((r * r - kLinkLengthA * kLinkLengthA - kLinkLengthB * kLinkLengthB) / (-2.0f * kLinkLengthA * kLinkLengthB), -1.0f, 1.0f);
+  // Law of cosines for the second joint. With theta2 defined (per
+  // calculateFootFromServos) as the bend away from a fully-extended leg,
+  // r^2 = L1^2 + L2^2 + 2*L1*L2*cos(theta2) -- note the *positive* cross
+  // term, since r is maximal (L1+L2) when theta2 = 0 (leg straight).
+  const float cosTheta2 = clampFloat((r * r - kLinkLengthA * kLinkLengthA - kLinkLengthB * kLinkLengthB) / (2.0f * kLinkLengthA * kLinkLengthB), -1.0f, 1.0f);
   const float theta2 = acosf(cosTheta2);
 
   // First joint uses the geometry of the two-link chain.
