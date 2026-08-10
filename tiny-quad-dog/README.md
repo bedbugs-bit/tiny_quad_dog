@@ -121,31 +121,6 @@ tool call is translated 1:1 into the JSON serial protocol above. Swapping in
 a different model, a different LLM provider, or a hand-written rule-based
 controller means editing this one script — the firmware doesn't change.
 
-## Calibration notes
-
-The kinematics constants in [include/leg_kinematics.h](include/leg_kinematics.h)
-(`kLinkLengthA`, `kLinkLengthB`) are **estimates**, not measurements. They
-were sized against the overall scale of the provided `assembly.stl` (chassis
-~87×67×18mm, front/rear hip spacing ~127mm, the single largest leg part in
-the mesh spans ~77mm) to replace the previous arbitrary placeholder — but the
-STL is an unlabeled mesh, so individual link parts (thigh vs. shin) couldn't
-be reliably told apart from the geometry alone. **Before flying real gaits:**
-
-1. Measure the actual upper-leg (`kLinkLengthA`) and lower-leg (`kLinkLengthB`)
-   link lengths with calipers on the physical robot and update
-   `leg_kinematics.h`.
-2. Set the zero offsets, invert flags, and angle limits in
-   `LegKinematics::setDefaultCalibrations()` (`src/leg_kinematics.cpp`) to
-   match the physical servo mounting.
-3. Confirm the leg-index-to-servo-channel wiring matches the convention
-   documented at the top of `include/gait_engine.h` (0=front-left,
-   1=front-right, 2=rear-left, 3=rear-right; channels are `legIndex*3 + {0,1,2}`
-   for {hip-pitch, knee-pitch, hip-yaw}). If a leg moves opposite to what's
-   expected, it's almost always this mapping or an inverted calibration flag,
-   not the gait math.
-4. `bodyHeightMm_` (in `gait_engine.h`, default 55mm) and the sit/stand
-   target heights (in `gait_engine.cpp`'s `updateSitStand` calls) are scaled
-   off the same estimate and should be re-tuned alongside the link lengths.
 
 ## Suggested test sequence
 

@@ -43,15 +43,7 @@ public:
 
   LegCalibration calibrations[4];
 
-  // ESTIMATES, not measurements -- derived from the overall scale of
-  // assembly.stl (chassis ~87x67x18mm, front/rear hip spacing ~127mm, the
-  // single largest leg part in the mesh spans ~77mm), not from identifying
-  // individual link parts in the CAD (the mesh has no part names/labels, so
-  // upper-leg vs. lower-leg segments can't be told apart with confidence).
-  // These replace the previous placeholder (35/45mm, max 80mm reach) with
-  // numbers proportioned to the real hip spacing instead of an arbitrary
-  // small value, but they still MUST be replaced with calipers-on-the-robot
-  // measurements before flight -- see README.md's calibration notes.
+
   static constexpr float kLinkLengthA = 40.0f; // Upper leg (thigh), hip joint to knee.
   static constexpr float kLinkLengthB = 65.0f; // Lower leg (shin), knee joint to foot.
 };
