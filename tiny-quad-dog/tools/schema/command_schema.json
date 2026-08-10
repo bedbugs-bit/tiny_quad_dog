@@ -1,0 +1,43 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "tiny_quad_dog command",
+  "type": "object",
+  "properties": {
+    "id": { "type": "string" },
+    "function": {
+      "type": "string",
+      "enum": ["move", "turn", "setPose", "stop", "setGaitSpeed", "status"]
+    },
+    "args": { "type": "object" }
+  },
+  "required": ["function"],
+  "definitions": {
+    "moveArgs": {
+      "type": "object",
+      "properties": {
+        "direction": { "type": "string", "enum": ["forward","backward","left","right"] },
+        "speed": { "type": "number", "minimum": 0.0, "maximum": 2.0 },
+        "duration_ms": { "type": "integer", "minimum": 100, "maximum": 10000 }
+      },
+      "required": ["direction"]
+    },
+    "turnArgs": {
+      "type": "object",
+      "properties": {
+        "direction": { "type": "string", "enum": ["left","right"] },
+        "angle_deg": { "type": "number", "minimum": -90.0, "maximum": 90.0 }
+      },
+      "required": ["direction"]
+    },
+    "setPoseArgs": {
+      "type": "object",
+      "properties": { "pose": { "type": "string", "enum": ["sit","stand","idle"] } },
+      "required": ["pose"]
+    },
+    "setGaitSpeedArgs": {
+      "type": "object",
+      "properties": { "speed": { "type": "number", "minimum": 0.1, "maximum": 2.0 } },
+      "required": ["speed"]
+    }
+  }
+}

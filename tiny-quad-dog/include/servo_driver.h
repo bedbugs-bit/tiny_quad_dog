@@ -17,12 +17,14 @@ public:
 
   ServoDriver();
 
-  void begin(uint8_t address = 0x40);
-  void setAngle(uint8_t channel, float angleDeg, const JointCalibration& calibration);
-  void setAngleRaw(uint8_t channel, float angleDeg);
-  void interpolateTo(uint8_t channel, float targetAngleDeg, uint32_t durationMs, const JointCalibration& calibration);
-  void update();
-  float getCurrentAngle(uint8_t channel) const;
+  virtual ~ServoDriver();
+
+  virtual void begin(uint8_t address = 0x40);
+  virtual void setAngle(uint8_t channel, float angleDeg, const JointCalibration& calibration);
+  virtual void setAngleRaw(uint8_t channel, float angleDeg);
+  virtual void interpolateTo(uint8_t channel, float targetAngleDeg, uint32_t durationMs, const JointCalibration& calibration);
+  virtual void update();
+  virtual float getCurrentAngle(uint8_t channel) const;
 
 private:
   Adafruit_PWMServoDriver pwm_;

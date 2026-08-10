@@ -8,6 +8,8 @@ float clampFloat(float value, float minValue, float maxValue) {
 
 ServoDriver::ServoDriver() : pwm_(0x40) {}
 
+ServoDriver::~ServoDriver() {}
+
 void ServoDriver::begin(uint8_t address) {
   pwm_ = Adafruit_PWMServoDriver(address);
   pwm_.begin();
