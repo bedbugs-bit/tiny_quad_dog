@@ -34,6 +34,7 @@ void setup() {
 
 void loop() {
   servoDriver.update();
+  robotApi.update();
   gaitEngine.update();
   commandInterface.update();
 }

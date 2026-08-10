@@ -39,9 +39,10 @@ void GaitEngine::begin(LegKinematics* kinematics, ServoDriver* servoDriver) {
 }
 
 void GaitEngine::setStepParameters(float stepHeightMm, float stepLengthMm, uint32_t cycleDurationMs) {
-  stepHeightMm_ = stepHeightMm;
-  stepLengthMm_ = stepLengthMm;
-  cycleDurationMs_ = cycleDurationMs;
+  // Clamp to conservative safe ranges to avoid over-stretching legs.
+  stepHeightMm_ = clampFloat(stepHeightMm, 0.0f, 40.0f);
+  stepLengthMm_ = clampFloat(stepLengthMm, 0.0f, 50.0f);
+  cycleDurationMs_ = constrain(cycleDurationMs, 200u, 2000u);
 }
 
 void GaitEngine::standIdle() {

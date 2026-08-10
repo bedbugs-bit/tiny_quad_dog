@@ -121,6 +121,23 @@ tool call is translated 1:1 into the JSON serial protocol above. Swapping in
 a different model, a different LLM provider, or a hand-written rule-based
 controller means editing this one script — the firmware doesn't change.
 
+### With OpenAI / function-calling (Codex / ChatGPT)
+
+An alternative bridge using OpenAI function-calling is provided at
+`tools/openai_bridge.py`. It implements the same JSON command protocol and
+can be used with OpenAI models that support function calls. Example usage:
+
+```bash
+cd tools
+pip install -r requirements.txt
+export OPENAI_API_KEY=...
+python openai_bridge.py --port /dev/tty.usbserial-XXXX
+```
+
+The script requests the model to select one of the robot functions and then
+translates that function call into the same serial JSON command the
+firmware expects.
+
 
 ## Suggested test sequence
 
