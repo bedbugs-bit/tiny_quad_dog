@@ -5,6 +5,14 @@
 #include "leg_kinematics.h"
 #include "servo_driver.h"
 
+// Leg index convention used throughout GaitEngine and LegKinematics:
+//   0 = front-left   1 = front-right
+//   2 = rear-left    3 = rear-right
+// This matches LegKinematics::setDefaultCalibrations(), which mirrors legs
+// 1 and 3 (the right side). Diagonal trot pairs are {0,3} and {1,2}: each
+// pair swings together while the other pair stays planted. If the physical
+// wiring doesn't match this layout, swap the affected servo channel bases
+// (legIndex * 3) in main.cpp/wiring rather than the gait math.
 struct LegPose {
   float x = 0.0f;
   float y = 0.0f;
@@ -55,7 +63,11 @@ private:
   float stepLengthMm_ = 18.0f;
   uint32_t cycleDurationMs_ = 500;
   uint32_t modeStartMs_ = 0;
-  float bodyHeightMm_ = 28.0f;
+  // ~half of the estimated max leg reach (kLinkLengthA + kLinkLengthB =
+  // 105mm) -- a comfortable knee bend for standing. Re-tune once the real
+  // link lengths are measured; see the estimate note in leg_kinematics.h.
+  float bodyHeightMm_ = 55.0f;
+  float heightAtModeStart_ = 55.0f;
   float walkSpeed_ = 1.0f;
   float turnSpeed_ = 1.0f;
 
@@ -65,4 +77,12 @@ private:
   void updateTurn(float turnSign);
   void updateSitStand(float targetHeightMm);
   void updateWag();
+
+  // Shared trot step: first half of legPhase01 is the swing sub-phase
+  // (foot lifted off the ground and moved from -strideAmplitudeMm to
+  // +strideAmplitudeMm to get ready for the next stance), second half is
+  // the stance sub-phase (foot planted at bodyHeightMm_ and swept from
+  // +strideAmplitudeMm back to -strideAmplitudeMm, which is what actually
+  // drives/rotates the body since that foot is in contact with the ground).
+  LegPose computeStepPose(float legPhase01, float strideAmplitudeMm) const;
 };

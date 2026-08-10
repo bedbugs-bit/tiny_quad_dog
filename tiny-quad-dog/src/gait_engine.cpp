@@ -1,6 +1,17 @@
 #include "gait_engine.h"
 
 namespace {
+constexpr float kPi = 3.14159265f;
+
+// true for the {front-right, rear-left} diagonal pair (legs 1, 2), false for
+// the {front-left, rear-right} pair (legs 0, 3). See the leg index
+// convention comment in gait_engine.h.
+constexpr bool kDiagonalGroupB[4] = {false, true, true, false};
+
+// Sign of a leg's stride during in-place turning: left-side legs and
+// right-side legs must stride in opposite directions to rotate the body.
+constexpr float kTurnDirection[4] = {-1.0f, 1.0f, -1.0f, 1.0f};
+
 float clampFloat(float value, float minValue, float maxValue) {
   return value < minValue ? minValue : (value > maxValue ? maxValue : value);
 }
@@ -73,11 +84,13 @@ void GaitEngine::turnRight(float speed, float stepLengthMm) {
 void GaitEngine::sitDown() {
   mode_ = Mode::SitDown;
   modeStartMs_ = millis();
+  heightAtModeStart_ = bodyHeightMm_;
 }
 
 void GaitEngine::standUp() {
   mode_ = Mode::StandUp;
   modeStartMs_ = millis();
+  heightAtModeStart_ = bodyHeightMm_;
 }
 
 void GaitEngine::wagOrShake() {
@@ -100,10 +113,10 @@ void GaitEngine::update() {
       updateTurn(-1.0f);
       break;
     case Mode::SitDown:
-      updateSitStand(10.0f);
+      updateSitStand(20.0f);
       break;
     case Mode::StandUp:
-      updateSitStand(28.0f);
+      updateSitStand(55.0f);
       break;
     case Mode::WagOrShake:
       updateWag();
@@ -149,47 +162,60 @@ void GaitEngine::setAllLegs(const LegPose& pose) {
   }
 }
 
+LegPose GaitEngine::computeStepPose(float legPhase01, float strideAmplitudeMm) const {
+  LegPose pose;
+  if (legPhase01 < 0.5f) {
+    // Swing sub-phase: foot is off the ground, sweeping forward to plant
+    // ahead of the body. Lift peaks at the midpoint of the swing.
+    const float s = legPhase01 / 0.5f;
+    pose.x = lerp(-strideAmplitudeMm, strideAmplitudeMm, s);
+    pose.y = bodyHeightMm_ - sinf(s * kPi) * stepHeightMm_;
+  } else {
+    // Stance sub-phase: foot is planted at full standing extension and
+    // sweeps backward relative to the body -- this is the stroke that
+    // actually pushes/rotates the body, since this foot has ground contact.
+    const float s = (legPhase01 - 0.5f) / 0.5f;
+    pose.x = lerp(strideAmplitudeMm, -strideAmplitudeMm, s);
+    pose.y = bodyHeightMm_;
+  }
+  // Small continuous hip-yaw sway to help shift weight toward the
+  // supporting diagonal; purely cosmetic/stability-assist and safe to
+  // tune down to 0 once the real robot's balance is characterized.
+  pose.swing = 5.0f * cosf(legPhase01 * 2.0f * kPi);
+  return pose;
+}
+
 void GaitEngine::updateWalk(float directionSign) {
   const uint32_t elapsed = millis() - modeStartMs_;
-  const float phase = static_cast<float>((elapsed % cycleDurationMs_) / static_cast<float>(cycleDurationMs_));
-  const bool leftSwing = phase < 0.5f;
-
-  const float rise = sinf(phase * 2.0f * 3.14159265f) * stepHeightMm_;
-  const float stride = directionSign * stepLengthMm_ * walkSpeed_ * (phase < 0.5f ? 1.0f : -1.0f);
+  const float globalPhase = static_cast<float>(elapsed % cycleDurationMs_) / static_cast<float>(cycleDurationMs_);
+  const float strideAmplitude = 0.5f * stepLengthMm_ * walkSpeed_ * directionSign;
 
   for (uint8_t legIndex = 0; legIndex < 4; ++legIndex) {
-    const bool isSwing = (legIndex % 2 == 0) ? leftSwing : !leftSwing;
-    LegPose pose(0.0f, 0.0f, 0.0f);
-    pose.x = isSwing ? stride : 0.0f;
-    pose.y = isSwing ? rise : 0.0f;
-    pose.swing = isSwing ? 5.0f : -5.0f;
-    legPoses_[legIndex] = pose;
+    const float phaseOffset = kDiagonalGroupB[legIndex] ? 0.5f : 0.0f;
+    const float legPhase = fmodf(globalPhase + phaseOffset, 1.0f);
+    legPoses_[legIndex] = computeStepPose(legPhase, strideAmplitude);
   }
 }
 
 void GaitEngine::updateTurn(float turnSign) {
   const uint32_t elapsed = millis() - modeStartMs_;
-  const float phase = static_cast<float>((elapsed % cycleDurationMs_) / static_cast<float>(cycleDurationMs_));
-  const bool leftSwing = phase < 0.5f;
-  const float rise = sinf(phase * 2.0f * 3.14159265f) * stepHeightMm_;
-  const float stride = turnSign * stepLengthMm_ * turnSpeed_ * (phase < 0.5f ? 1.0f : -1.0f);
+  const float globalPhase = static_cast<float>(elapsed % cycleDurationMs_) / static_cast<float>(cycleDurationMs_);
 
   for (uint8_t legIndex = 0; legIndex < 4; ++legIndex) {
-    const bool isSwing = (legIndex % 2 == 0) ? leftSwing : !leftSwing;
-    LegPose pose(0.0f, 0.0f, 0.0f);
-    pose.x = isSwing ? stride : 0.0f;
-    pose.y = isSwing ? rise : 0.0f;
-    pose.swing = isSwing ? 4.0f : -4.0f;
-    legPoses_[legIndex] = pose;
+    const float phaseOffset = kDiagonalGroupB[legIndex] ? 0.5f : 0.0f;
+    const float legPhase = fmodf(globalPhase + phaseOffset, 1.0f);
+    const float strideAmplitude = 0.5f * stepLengthMm_ * turnSpeed_ * turnSign * kTurnDirection[legIndex];
+    legPoses_[legIndex] = computeStepPose(legPhase, strideAmplitude);
   }
 }
 
 void GaitEngine::updateSitStand(float targetHeightMm) {
   const uint32_t elapsed = millis() - modeStartMs_;
   const float progress = clampFloat(static_cast<float>(elapsed) / 1500.0f, 0.0f, 1.0f);
-  const float height = lerp(bodyHeightMm_, targetHeightMm, progress);
+  const float height = lerp(heightAtModeStart_, targetHeightMm, progress);
   bodyHeightMm_ = height;
   for (auto& pose : legPoses_) {
+    pose.x = 0.0f;
     pose.y = height;
     pose.swing = 0.0f;
   }
